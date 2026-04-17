@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Connect Account</title>
+  <script src="https://cdn.plaid.com/link/v2/stable/link.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -13,78 +15,65 @@
       justify-content: center;
       height: 100vh;
       font-family: -apple-system, sans-serif;
-      gap: 24px;
+      gap: 20px;
     }
-    p {
-      color: #94A3B8;
-      font-size: 15px;
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid #E2E8F0;
+      border-top-color: #4F46E5;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
     }
-    button {
-      background: #4F46E5;
-      color: #fff;
-      border: none;
-      border-radius: 14px;
-      padding: 16px 40px;
-      font-size: 16px;
-      font-weight: 600;
-      font-family: -apple-system, sans-serif;
-      cursor: pointer;
-    }
-    #error { color: #EF4444; font-size: 14px; display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #status { color: #94A3B8; font-size: 15px; }
+    #error { color: #EF4444; font-size: 14px; text-align: center; padding: 0 32px; line-height: 1.5; display: none; }
+    #btn { background: #4F46E5; color: #fff; border: none; border-radius: 14px; padding: 16px 40px; font-size: 16px; font-weight: 600; font-family: -apple-system, sans-serif; cursor: pointer; display: none; }
   </style>
 </head>
 <body>
-  <p>Ready to connect your account</p>
-  <button id="btn" onclick="openPlaid()">Connect with Plaid</button>
+  <div class="spinner" id="spinner"></div>
+  <p id="status">Connecting to Plaid...</p>
   <p id="error"></p>
+  <button id="btn" onclick="if(handler) handler.open()">Open Plaid</button>
 
   <script>
     var handler = null;
-
-    window.onerror = function(msg, src, line) {
-      show('JS Error: ' + msg + ' (line ' + line + ')');
-    };
-
-    function show(msg) {
-      var el = document.getElementById('error');
-      el.style.display = 'block';
-      el.innerText = msg;
-    }
-
-    function openPlaid() {
-      if (!handler) { show('Handler not ready.'); return; }
-      try { handler.open(); } catch(e) { show('open() error: ' + e.message); }
-    }
-
     var params = new URLSearchParams(window.location.search);
     var token = params.get('token');
 
+    function showError(msg) {
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('status').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').innerText = msg;
+    }
+
     if (!token) {
-      show('Missing token.');
-      document.getElementById('btn').style.display = 'none';
+      showError('Missing token. Return to the app and try again.');
+    } else if (typeof Plaid === 'undefined') {
+      showError('Failed to load Plaid SDK. Check your internet connection and try again.');
     } else {
-      var script = document.createElement('script');
-      script.src = 'https://cdn.plaid.com/link/v2/stable/link.js';
-      script.onload = function() {
-        try {
-          if (typeof Plaid === 'undefined') { show('Plaid SDK not loaded.'); return; }
-          handler = Plaid.create({
-            token: token,
-            onSuccess: function(publicToken, metadata) {
-              var inst = metadata.institution ? encodeURIComponent(metadata.institution.name) : 'Unknown';
-              window.location.href = 'chamarr-finance://plaid-success?public_token=' + publicToken + '&institution=' + inst;
-            },
-            onExit: function(err) {
-              window.location.href = 'chamarr-finance://plaid-exit';
-            }
-          });
-          show('Ready. Tap the button.');
-        } catch(e) {
-          show('create() error: ' + e.message);
-        }
-      };
-      script.onerror = function() { show('Failed to load Plaid SDK.'); };
-      document.body.appendChild(script);
+      try {
+        handler = Plaid.create({
+          token: token,
+          onSuccess: function(publicToken, metadata) {
+            document.getElementById('status').innerText = 'Success! Returning to app...';
+            document.getElementById('spinner').style.display = 'none';
+            var inst = metadata.institution ? encodeURIComponent(metadata.institution.name) : 'Unknown';
+            window.location.href = 'chamarr-finance://plaid-success?public_token=' + publicToken + '&institution=' + inst;
+          },
+          onExit: function() {
+            window.location.href = 'chamarr-finance://plaid-exit';
+          }
+        });
+        document.getElementById('spinner').style.display = 'none';
+        document.getElementById('status').innerText = 'Opening Plaid...';
+        document.getElementById('btn').style.display = 'block';
+        handler.open();
+      } catch(e) {
+        showError('Error: ' + e.message);
+      }
     }
   </script>
 </body>
