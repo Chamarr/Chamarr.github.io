@@ -8,26 +8,48 @@
     body {
       background: #fff;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100vh;
       font-family: -apple-system, sans-serif;
+      gap: 24px;
+    }
+    p {
       color: #94A3B8;
       font-size: 15px;
     }
+    button {
+      background: #4F46E5;
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 16px 40px;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: -apple-system, sans-serif;
+      cursor: pointer;
+    }
+    #error { color: #EF4444; font-size: 14px; display: none; }
   </style>
 </head>
 <body>
-  <p>Opening Plaid...</p>
+  <p>Ready to connect your account</p>
+  <button id="btn" onclick="openPlaid()">Connect with Plaid</button>
+  <p id="error"></p>
+
   <script src="https://cdn.plaid.com/link/v2/stable/link.js"></script>
   <script>
     var params = new URLSearchParams(window.location.search);
     var token = params.get('token');
+    var handler = null;
 
     if (!token) {
-      document.body.innerHTML = '<p>Missing token.</p>';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').innerText = 'Missing token.';
+      document.getElementById('btn').style.display = 'none';
     } else {
-      var handler = Plaid.create({
+      handler = Plaid.create({
         token: token,
         onSuccess: function(publicToken, metadata) {
           var institution = metadata.institution ? encodeURIComponent(metadata.institution.name) : 'Unknown';
@@ -37,7 +59,10 @@
           window.location.href = 'chamarr-finance://plaid-exit';
         }
       });
-      handler.open();
+    }
+
+    function openPlaid() {
+      if (handler) handler.open();
     }
   </script>
 </body>
