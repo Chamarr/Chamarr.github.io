@@ -38,49 +38,54 @@
   <button id="btn" onclick="openPlaid()">Connect with Plaid</button>
   <p id="error"></p>
 
-  <script src="https://cdn.plaid.com/link/v2/stable/link.js"></script>
   <script>
-    var params = new URLSearchParams(window.location.search);
-    var token = params.get('token');
     var handler = null;
 
-    if (!token) {
-      document.getElementById('error').style.display = 'block';
-      document.getElementById('error').innerText = 'Missing token.';
-      document.getElementById('btn').style.display = 'none';
-    } else {
-      handler = Plaid.create({
-        token: token,
-        onSuccess: function(publicToken, metadata) {
-          var institution = metadata.institution ? encodeURIComponent(metadata.institution.name) : 'Unknown';
-          window.location.href = 'chamarr-finance://plaid-success?public_token=' + publicToken + '&institution=' + institution;
-        },
-        onExit: function(err) {
-          window.location.href = 'chamarr-finance://plaid-exit';
-        }
-      });
+    window.onerror = function(msg, src, line) {
+      show('JS Error: ' + msg + ' (line ' + line + ')');
+    };
+
+    function show(msg) {
+      var el = document.getElementById('error');
+      el.style.display = 'block';
+      el.innerText = msg;
     }
 
     function openPlaid() {
-      var errEl = document.getElementById('error');
-      if (!handler) {
-        errEl.style.display = 'block';
-        errEl.innerText = 'Handler not initialized.';
-        return;
-      }
-      try {
-        handler.open();
-      } catch(e) {
-        errEl.style.display = 'block';
-        errEl.innerText = 'Error: ' + e.message;
-      }
+      if (!handler) { show('Handler not ready.'); return; }
+      try { handler.open(); } catch(e) { show('open() error: ' + e.message); }
     }
 
-    window.onerror = function(msg, src, line) {
-      var errEl = document.getElementById('error');
-      errEl.style.display = 'block';
-      errEl.innerText = 'JS Error: ' + msg + ' (line ' + line + ')';
-    };
+    var params = new URLSearchParams(window.location.search);
+    var token = params.get('token');
+
+    if (!token) {
+      show('Missing token.');
+      document.getElementById('btn').style.display = 'none';
+    } else {
+      var script = document.createElement('script');
+      script.src = 'https://cdn.plaid.com/link/v2/stable/link.js';
+      script.onload = function() {
+        try {
+          if (typeof Plaid === 'undefined') { show('Plaid SDK not loaded.'); return; }
+          handler = Plaid.create({
+            token: token,
+            onSuccess: function(publicToken, metadata) {
+              var inst = metadata.institution ? encodeURIComponent(metadata.institution.name) : 'Unknown';
+              window.location.href = 'chamarr-finance://plaid-success?public_token=' + publicToken + '&institution=' + inst;
+            },
+            onExit: function(err) {
+              window.location.href = 'chamarr-finance://plaid-exit';
+            }
+          });
+          show('Ready. Tap the button.');
+        } catch(e) {
+          show('create() error: ' + e.message);
+        }
+      };
+      script.onerror = function() { show('Failed to load Plaid SDK.'); };
+      document.body.appendChild(script);
+    }
   </script>
 </body>
 </html>
