@@ -62,8 +62,25 @@
     }
 
     function openPlaid() {
-      if (handler) handler.open();
+      var errEl = document.getElementById('error');
+      if (!handler) {
+        errEl.style.display = 'block';
+        errEl.innerText = 'Handler not initialized.';
+        return;
+      }
+      try {
+        handler.open();
+      } catch(e) {
+        errEl.style.display = 'block';
+        errEl.innerText = 'Error: ' + e.message;
+      }
     }
+
+    window.onerror = function(msg, src, line) {
+      var errEl = document.getElementById('error');
+      errEl.style.display = 'block';
+      errEl.innerText = 'JS Error: ' + msg + ' (line ' + line + ')';
+    };
   </script>
 </body>
 </html>
