@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: -apple-system, sans-serif;
+      color: #94A3B8;
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+  <p>Opening Plaid...</p>
+  <script src="https://cdn.plaid.com/link/v2/stable/link.js"></script>
+  <script>
+    var params = new URLSearchParams(window.location.search);
+    var token = params.get('token');
+
+    if (!token) {
+      document.body.innerHTML = '<p>Missing token.</p>';
+    } else {
+      var handler = Plaid.create({
+        token: token,
+        onSuccess: function(publicToken, metadata) {
+          var institution = metadata.institution ? encodeURIComponent(metadata.institution.name) : 'Unknown';
+          window.location.href = 'chamarr-finance://plaid-success?public_token=' + publicToken + '&institution=' + institution;
+        },
+        onExit: function(err) {
+          window.location.href = 'chamarr-finance://plaid-exit';
+        }
+      });
+      handler.open();
+    }
+  </script>
+</body>
+</html>
